@@ -18,63 +18,72 @@ driver = webdriver.Edge(service=service)
 #Load the webpage
 driver.get("https://tixel.com/uk/music-tickets/2025/07/24/truck-festival-2025")
 
-try:
-    # Wait for the page to load
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.TAG_NAME, 'body'))
-    )
+def findPrice():
+    result = ""
+    try:
+        # ait for the page to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, 'body'))
+        )
 
-    # Find all elements with IDs containing 'headlessui-disclosure-button'
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-    button_candidates = [btn for btn in soup.find_all(id=True) if 'headlessui-disclosure-button' in btn['id']]
-    print('Found disclosure button IDs:', [btn['id'] for btn in button_candidates])
+        #Parse the page source with BeautifulSoup
+        soup = BeautifulSoup(driver.page_source, 'html.parser') 
+        #Find all elements with IDs containing 'headlessui-disclosure-button' which is the button needed to expand the panel
+        button_candidates = [btn for btn in soup.find_all(id=True) if 'headlessui-disclosure-button' in btn['id']]
 
-    if button_candidates:
-        button_id = button_candidates[0]['id']
-        # Now use Selenium to click this button
-        from selenium.common.exceptions import WebDriverException
-        import time
-        try:
-            disclosure_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.ID, button_id))
-            )
-            disclosure_button.click()
-            time.sleep(1)  # Let the DOM settle
+        #Now, if there are button candidates, click the first one
+        if button_candidates:
+            button_id = button_candidates[0]['id']
+            #Use Selenium to click this button
+            from selenium.common.exceptions import WebDriverException
+            import time
+            try:
+                #Wait for the button to be clickable
+                disclosure_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.ID, button_id))
+                )
+                disclosure_button.click()
+                time.sleep(1)  #Let the DOM settle
 
-            # Re-fetch the panel candidates after click
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
-            panel_candidates = [el for el in soup.find_all(id=True) if 'headlessui-disclosure-panel' in el['id']]
-            if panel_candidates:
-                panel_id = panel_candidates[0]['id']
-            else:
-                panel_id = 'headlessui-disclosure-panel-v-3-0-0-5'  # fallback
+                #Re-fetch the panel candidates after click, to stop it breaking
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                panel_candidates = [el for el in soup.find_all(id=True) if 'headlessui-disclosure-panel' in el['id']]
+                if panel_candidates:
+                    panel_id = panel_candidates[0]['id']
+                else:
+                    panel_id = 'headlessui-disclosure-panel-v-3-0-0-5'  #fallback based on original code
 
-            # Wait for the panel to become visible, retry if frame detaches
-            for attempt in range(2):
-                try:
-                    WebDriverWait(driver, 10).until(
-                        EC.visibility_of_element_located((By.ID, panel_id))
-                    )
-                    break
-                except WebDriverException as e:
-                    print(f'WebDriverException: {e}. Retrying...')
-                    time.sleep(1)
-            # Get page source and parse it again
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
-            element = soup.select_one(f'#{panel_id} > button:nth-child(1) > p')
-            if element:
-                print(element.text)
-            else:
-                print('Target element not found!')
-        except WebDriverException as e:
-            print(f'WebDriverException occurred: {e}')
-    else:
-        print('No disclosure button found!')
-finally:
-    #Close the webdriver
-    driver.quit()
+                #Wait for the panel to become visible, retry if frame detaches
+                for attempt in range(2):
+                    try:
+                        WebDriverWait(driver, 10).until(
+                            EC.visibility_of_element_located((By.ID, panel_id))
+                        )
+                        break
+                    except WebDriverException as e:
+                        print(f'WebDriverException: {e}. Retrying...')
+                        time.sleep(1)
+
+                #Get page source and parse it again, then print the text of the target element
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
+                element = soup.select_one(f'#{panel_id} > button:nth-child(1) > p') #This selector is based on the js code provided from inspect element
+                if element:
+                    result = element.text
+                else:
+                    result = 'Target element not found!'
+            except WebDriverException as e:
+                result = (f'WebDriverException occurred: {e}')
+        else:
+            result = 'No disclosure button found!'
+    finally:
+        #Close the webdriver
+        driver.quit()
+        return result
 
 
+if __name__ == "__main__":
+    result = findPrice()
+    print(result)
 
 
 
